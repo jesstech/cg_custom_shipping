@@ -9,6 +9,8 @@ $lang = array(
    
    'near_states' => 'US States considered "Near":',
    'far_states' => 'US States considered "Far":',
-   'global_cost' => 'Default shipping cost for shipments outside US:'
+   'global_cost' => 'Default shipping cost for shipments outside US:',
+
+   'wrong_plugin' => "In order to use the custom shipping fieldtype, you must select 'Cullgroup Custom Shipping Plugin' in CartThrob's shipping settings.",
 
 );

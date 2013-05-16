@@ -12,94 +12,94 @@ $this->EE->lang->loadfile('cg_custom_shipping');
  */
 class Cg_custom_shipping_ft extends Cartthrob_matrix_ft
 {
-	public $info = array(
-		'name' => 'Cullgroup Custom Shipping Cost',
-		'version' => '1.0',
-	);
-	
-	public $default_row = array(
-		'from_quantity' => '',
-		'up_to_quantity' => '',
-		'near_cost' => '',
-		'far_cost' => '',
-		'global_cost' => '',
-	);
 
-	public function pre_process($data)
-	{
-		$data = parent::pre_process($data);
+   public $info = array(
+      'name' => 'Cullgroup Custom Shipping Cost',
+      'version' => '1.0',
+   );
+   
+   public $default_row = array(
+      'from_quantity' => '',
+      'up_to_quantity' => '',
+      'near_cost' => '',
+      'far_cost' => '',
+      'global_cost' => '',
+   );
 
-		$this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
-		
-		$this->EE->load->library('cartthrob_loader');
-		
-		$this->EE->load->library('number');
-		
-		foreach ($data as &$row)
-		{
-			if (isset($row['price']) && $row['price'] !== '')
-			{
-				$row['price_plus_tax'] = $row['price'];
- 				
-				if ($plugin = $this->EE->cartthrob->store->plugin($this->EE->cartthrob->store->config('tax_plugin')))
-				{
-					$row['price_plus_tax'] = $plugin->get_tax($row['price']) + $row['price'];
- 				}
-				
-				$row['price_numeric'] = $row['price'];
-				$row['price_plus_tax_numeric'] = $row['price:plus_tax_numeric'] =  $row['price_numeric:plus_tax'] = $row['price_plus_tax'];
-				
-				$row['price'] = $this->EE->number->format($row['price']);
-				$row['price_plus_tax'] = $row['price:plus_tax'] = $this->EE->number->format($row['price_plus_tax']);
-			}
-		}
-		
-		// var_dump( $data );
+   private $plugin;
 
-		return $data;
-	}
-	
-	public function replace_price($data, $params= array(), $tagdata = FALSE)
-	{
-		$this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
-		$this->EE->load->library('number');
-		
-		return $this->EE->number->format($this->cartthrob_price($data));
-	}
-	
-	public function cartthrob_price($data, $item = NULL)
-	{
 
-		// var_dump($item);
+   public function __construct()
+   {
 
-		if ( ! is_array($data))
-		{
-			$serialized = $data;
-			
-			if ( ! isset($this->EE->session->cache['cartthrob']['price_quantity_thresholds']['cartthrob_price'][$serialized]))
-			{
-				$this->EE->session->cache['cartthrob']['price_quantity_thresholds']['cartthrob_price'][$serialized] = _unserialize($data, TRUE);
-			}
-			
-			$data = $this->EE->session->cache['cartthrob']['price_quantity_thresholds']['cartthrob_price'][$serialized];
-		}
-		reset($data); 
+      $this->EE =& get_instance();
+      
+      if (!isset($this->EE->cartthrob))
+      {
+         $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+         $this->EE->load->library('cartthrob_loader');
+      }
 
-		// var_dump($data);
-		
-		while(($row = current($data)) !== FALSE)
-		{
-			// if quantity is within the thresholds
-			// OR if we get to the end of the array
-			// the last row will set the price, no matter what
-			if (next($data) === FALSE || ($item instanceof Cartthrob_item && $item->quantity() >= $row['from_quantity'] && $item->quantity() <= $row['up_to_quantity']))
-			{
-				return $row['price'];
-			}
-		}
+      if (!$this->plugin instanceof Cartthrob_shipping_cg_custom)
+      {
+         // Get currently selected shipping plugin
+         $current_plugin = $this->EE->cartthrob->store->config('shipping_plugin');
+         if ($current_plugin != 'Cartthrob_shipping_cg_custom') {
+            // show_error();
+            trigger_error(lang('wrong_plugin'), E_USER_WARNING);
+            return;
+         }
+         // Save it
+         $this->plugin = $this->EE->cartthrob->store->plugin($current_plugin);
+      }
 
-		return 0;
-	}
+   }
+
+   
+   public function replace_tag($data, $params = array(), $tagdata = FALSE)
+   {
+
+      if (!is_array($data))
+         return null;
+
+      if (!$this->plugin instanceof Cartthrob_shipping_cg_custom)
+         return null;
+
+      $number = $this->plugin->get_shipping_for_fieldtype($data, $params);
+
+      $this->EE->load->library('number');
+
+      /**
+       * CartThrob's number formatting only looks for params in TMPL->tagparams, 
+       * which apparently doesn't reflect the actual params passed to a single var
+       * fieldtype, so we have to do this manually to avoid overwriting legit tagdata
+       */
+      if (isset($params['prefix']))          $this->EE->number->set_prefix($params['prefix']);
+      if (isset($params['prefix_position'])) $this->EE->number->set_prefix_position($params['prefix_position']);
+      if (isset($params['decimals']))        $this->EE->number->set_decimals($params['decimals']);
+      if (isset($params['dec_point']))       $this->EE->number->set_dec_point($params['dec_point']);
+      if (isset($params['thousands_sep']))   $this->EE->number->set_thousands_sep($params['thousands_sep']);
+      
+      return  $this->EE->number->format($number);
+
+   }
+
+   public function replace_number($data, $params = array(), $tagdata = FALSE)
+   {
+
+      if (!is_array($data))
+         return null;
+
+      if (!$this->plugin instanceof Cartthrob_shipping_cg_custom)
+         return null;
+
+      $number = $this->plugin->get_shipping_for_fieldtype($data, $params);
+
+      return (float) sanitize_number($number);
+
+   }
+
+   
 }
 
 /* End of file ft.agco_custom_shipping.php */
